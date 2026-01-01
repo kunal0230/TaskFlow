@@ -4,6 +4,18 @@
    ============================================ */
 
 // ============================================
+// Utility Functions
+// ============================================
+const Utils = {
+    escapeHtml(str) {
+        if (!str) return '';
+        const div = document.createElement('div');
+        div.textContent = str;
+        return div.innerHTML;
+    }
+};
+
+// ============================================
 // Toast Manager - Shows notifications
 // ============================================
 const ToastManager = {
@@ -25,7 +37,7 @@ const ToastManager = {
 
         toast.innerHTML = `
             <span class="toast-icon">${icons[type] || icons.success}</span>
-            <span class="toast-message">${message}</span>
+            <span class="toast-message">${Utils.escapeHtml(message)}</span>
             <button class="toast-close" onclick="this.parentElement.remove()">
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                     <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
@@ -287,7 +299,7 @@ const CategoryManager = {
     },
 
     generateId() {
-        return 'cat_' + Date.now().toString(36) + Math.random().toString(36).substr(2);
+        return 'cat_' + Date.now().toString(36) + Math.random().toString(36).slice(2);
     }
 };
 
@@ -547,26 +559,42 @@ const TaskManager = {
             reader.onload = (e) => {
                 try {
                     const data = JSON.parse(e.target.result);
+                    const categoryIdMap = {};
 
+                    // First, import categories and create ID mapping
+                    if (data.categories && Array.isArray(data.categories)) {
+                        const existingCategories = CategoryManager.getCategories();
+                        const newCategories = data.categories.filter(c =>
+                            !existingCategories.some(ec => ec.name.toLowerCase() === c.name.toLowerCase())
+                        ).map(c => {
+                            const newId = CategoryManager.generateId();
+                            categoryIdMap[c.id] = newId;
+                            return { ...c, id: newId };
+                        });
+
+                        // Also map existing categories by name
+                        data.categories.forEach(c => {
+                            const existing = existingCategories.find(ec =>
+                                ec.name.toLowerCase() === c.name.toLowerCase()
+                            );
+                            if (existing) {
+                                categoryIdMap[c.id] = existing.id;
+                            }
+                        });
+
+                        CategoryManager.saveCategories([...existingCategories, ...newCategories]);
+                    }
+
+                    // Then import tasks with mapped category IDs
                     if (data.tasks && Array.isArray(data.tasks)) {
                         const existingTasks = this.getTasks();
                         const newTasks = data.tasks.map(t => ({
                             ...t,
                             id: this.generateId(),
+                            categoryId: categoryIdMap[t.categoryId] || null,
                             order: existingTasks.length + (t.order || 0)
                         }));
                         this.saveTasks([...existingTasks, ...newTasks]);
-                    }
-
-                    if (data.categories && Array.isArray(data.categories)) {
-                        const existingCategories = CategoryManager.getCategories();
-                        const newCategories = data.categories.filter(c =>
-                            !existingCategories.some(ec => ec.name.toLowerCase() === c.name.toLowerCase())
-                        ).map(c => ({
-                            ...c,
-                            id: CategoryManager.generateId()
-                        }));
-                        CategoryManager.saveCategories([...existingCategories, ...newCategories]);
                     }
 
                     resolve({ tasks: data.tasks?.length || 0, categories: data.categories?.length || 0 });
@@ -580,7 +608,7 @@ const TaskManager = {
     },
 
     generateId() {
-        return Date.now().toString(36) + Math.random().toString(36).substr(2);
+        return Date.now().toString(36) + Math.random().toString(36).slice(2);
     }
 };
 
@@ -591,8 +619,14 @@ const CalendarController = {
     currentDate: new Date(),
     selectedDate: null,
     elements: {},
+    initialized: false,
 
     init() {
+        if (this.initialized) {
+            this.render();
+            return;
+        }
+        this.initialized = true;
         this.cacheElements();
         this.bindEvents();
         this.render();
@@ -762,7 +796,8 @@ const CalendarController = {
         this.elements.calendarDays.querySelectorAll('.calendar-day').forEach(dayEl => {
             dayEl.addEventListener('click', () => {
                 const dateStr = dayEl.dataset.date;
-                this.selectDate(new Date(dateStr + 'T00:00:00'));
+                const [year, month, day] = dateStr.split('-').map(Number);
+                this.selectDate(new Date(year, month - 1, day));
             });
         });
     },
@@ -783,7 +818,7 @@ const CalendarController = {
             const completedClass = task.completed ? 'completed' : '';
             tasksHtml += `
                 <div class="day-task-item ${task.priority} ${completedClass}">
-                    ${this.escapeHtml(task.title)}
+                    ${Utils.escapeHtml(task.title)}
                 </div>
             `;
         });
@@ -839,7 +874,7 @@ const CalendarController = {
                     <label for="cal-check-${task.id}"></label>
                 </div>
                 <div class="selected-task-content">
-                    <div class="selected-task-title">${this.escapeHtml(task.title)}</div>
+                    <div class="selected-task-title">${Utils.escapeHtml(task.title)}</div>
                     <div class="selected-task-meta">
                         <span class="selected-task-priority ${task.priority}">${task.priority}</span>
                     </div>
@@ -899,12 +934,6 @@ const CalendarController = {
 
     formatDateForInput(date) {
         return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
-    },
-
-    escapeHtml(str) {
-        const div = document.createElement('div');
-        div.textContent = str;
-        return div.innerHTML;
     },
 
     refresh() {
@@ -1348,7 +1377,7 @@ const UIController = {
                 <button class="category-item ${this.currentCategory === cat.id ? 'active' : ''}" 
                         data-category="${cat.id}">
                     <span class="category-dot" style="background: ${cat.color}"></span>
-                    ${this.escapeHtml(cat.name)}
+                    ${Utils.escapeHtml(cat.name)}
                     <span class="category-count">${count}</span>
                 </button>
             `;
@@ -1456,7 +1485,7 @@ const UIController = {
         this.elements.subtasksContainer.innerHTML = this.editingSubtasks.map((st, i) => `
             <div class="subtask-item" data-index="${i}">
                 <input type="text" 
-                       value="${this.escapeHtml(st.text)}" 
+                       value="${Utils.escapeHtml(st.text)}" 
                        placeholder="Subtask ${i + 1}"
                        onchange="UIController.updateSubtask(${i}, this.value)">
                 <button type="button" class="btn-icon-sm" onclick="UIController.removeSubtask(${i})">
@@ -1482,11 +1511,19 @@ const UIController = {
     handleTaskSubmit(e) {
         e.preventDefault();
 
+        // Validate task title
+        const title = this.elements.taskTitle.value.trim();
+        if (!title) {
+            ToastManager.show('Task title is required', 'error');
+            this.elements.taskTitle.focus();
+            return;
+        }
+
         // Filter out empty subtasks
         const subtasks = this.editingSubtasks.filter(st => st.text.trim());
 
         const taskData = {
-            title: this.elements.taskTitle.value,
+            title: title,
             description: this.elements.taskDescription.value,
             priority: this.elements.taskPriority.value,
             categoryId: this.elements.taskCategory.value || null,
@@ -1556,6 +1593,18 @@ const UIController = {
 
         if (tasks.length === 0) {
             this.elements.tasksContainer.innerHTML = '';
+            const totalTasks = TaskManager.getTasks().length;
+            const emptyTitle = this.elements.emptyState.querySelector('h3');
+            const emptyText = this.elements.emptyState.querySelector('p');
+            if (emptyTitle && emptyText) {
+                if (totalTasks === 0) {
+                    emptyTitle.textContent = 'No tasks yet';
+                    emptyText.textContent = 'Create your first task to get started!';
+                } else {
+                    emptyTitle.textContent = 'No matching tasks';
+                    emptyText.textContent = 'Try a different filter or search term.';
+                }
+            }
             this.elements.emptyState.classList.add('visible');
             return;
         }
@@ -1569,8 +1618,9 @@ const UIController = {
     },
 
     createTaskCard(task) {
-        const isOverdue = task.dueDate && new Date(task.dueDate) < new Date() && !task.completed;
-        const isToday = task.dueDate === new Date().toISOString().split('T')[0];
+        const today = new Date().toISOString().split('T')[0];
+        const isOverdue = task.dueDate && task.dueDate < today && !task.completed;
+        const isToday = task.dueDate === today;
         const formattedDate = task.dueDate ? this.formatDate(task.dueDate) : '';
         const category = task.categoryId ? CategoryManager.getCategoryById(task.categoryId) : null;
 
@@ -1596,16 +1646,16 @@ const UIController = {
                 </div>
                 <div class="task-content">
                     <div class="task-header">
-                        <span class="task-title">${this.escapeHtml(task.title)}</span>
+                        <span class="task-title">${Utils.escapeHtml(task.title)}</span>
                         <span class="task-priority ${task.priority}">${task.priority}</span>
                         ${category ? `
                             <span class="task-category">
                                 <span class="task-category-dot" style="background: ${category.color}"></span>
-                                ${this.escapeHtml(category.name)}
+                                ${Utils.escapeHtml(category.name)}
                             </span>
                         ` : ''}
                     </div>
-                    ${task.description ? `<p class="task-description">${this.escapeHtml(task.description)}</p>` : ''}
+                    ${task.description ? `<p class="task-description">${Utils.escapeHtml(task.description)}</p>` : ''}
                     <div class="task-meta">
                         ${formattedDate ? `
                             <span class="task-due ${isOverdue ? 'overdue' : ''} ${isToday ? 'today' : ''}">
@@ -1850,12 +1900,6 @@ const UIController = {
             month: 'short',
             day: 'numeric'
         });
-    },
-
-    escapeHtml(str) {
-        const div = document.createElement('div');
-        div.textContent = str;
-        return div.innerHTML;
     }
 };
 
