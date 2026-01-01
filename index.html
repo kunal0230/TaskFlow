@@ -231,15 +231,34 @@
             <div class="dashboard-sidebar">
                 <!-- Progress Card -->
                 <div class="progress-card">
-                    <div class="progress-header">
-                        <h3>Today's Progress</h3>
-                        <span id="progress-percent" class="progress-percent">0%</span>
+                    <!-- Today's Progress -->
+                    <div class="progress-section">
+                        <div class="progress-header">
+                            <h3>Today's Progress</h3>
+                            <span id="today-progress-percent" class="progress-percent">0%</span>
+                        </div>
+                        <div class="progress-bar">
+                            <div id="today-progress-fill" class="progress-fill" style="width: 0%"></div>
+                        </div>
+                        <div class="progress-stats">
+                            <span id="today-progress-text">0 of 0 completed</span>
+                        </div>
                     </div>
-                    <div class="progress-bar">
-                        <div id="progress-fill" class="progress-fill" style="width: 0%"></div>
-                    </div>
-                    <div class="progress-stats">
-                        <span id="progress-text">0 of 0 completed</span>
+
+                    <div class="progress-divider"></div>
+
+                    <!-- Month's Progress -->
+                    <div class="progress-section">
+                        <div class="progress-header">
+                            <h3>This Month</h3>
+                            <span id="month-progress-percent" class="progress-percent">0%</span>
+                        </div>
+                        <div class="progress-bar">
+                            <div id="month-progress-fill" class="progress-fill" style="width: 0%"></div>
+                        </div>
+                        <div class="progress-stats">
+                            <span id="month-progress-text">0 of 0 completed</span>
+                        </div>
                     </div>
                 </div>
 
@@ -610,14 +629,22 @@
                 <div class="form-group">
                     <label>Color</label>
                     <div class="color-picker">
-                        <button type="button" class="color-option active" data-color="#6366f1"></button>
-                        <button type="button" class="color-option" data-color="#3b82f6"></button>
-                        <button type="button" class="color-option" data-color="#10b981"></button>
-                        <button type="button" class="color-option" data-color="#f59e0b"></button>
-                        <button type="button" class="color-option" data-color="#ec4899"></button>
-                        <button type="button" class="color-option" data-color="#ef4444"></button>
-                        <button type="button" class="color-option" data-color="#8b5cf6"></button>
-                        <button type="button" class="color-option" data-color="#06b6d4"></button>
+                        <button type="button" class="color-option active" data-color="#6366f1"
+                            style="background-color: #6366f1;"></button>
+                        <button type="button" class="color-option" data-color="#3b82f6"
+                            style="background-color: #3b82f6;"></button>
+                        <button type="button" class="color-option" data-color="#10b981"
+                            style="background-color: #10b981;"></button>
+                        <button type="button" class="color-option" data-color="#f59e0b"
+                            style="background-color: #f59e0b;"></button>
+                        <button type="button" class="color-option" data-color="#ec4899"
+                            style="background-color: #ec4899;"></button>
+                        <button type="button" class="color-option" data-color="#ef4444"
+                            style="background-color: #ef4444;"></button>
+                        <button type="button" class="color-option" data-color="#8b5cf6"
+                            style="background-color: #8b5cf6;"></button>
+                        <button type="button" class="color-option" data-color="#06b6d4"
+                            style="background-color: #06b6d4;"></button>
                     </div>
                 </div>
                 <input type="hidden" id="category-color" value="#6366f1">

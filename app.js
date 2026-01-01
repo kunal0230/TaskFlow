@@ -978,9 +978,12 @@ const UIController = {
         this.elements.sortMenu = document.getElementById('sort-menu');
 
         // Stats & Progress
-        this.elements.progressPercent = document.getElementById('progress-percent');
-        this.elements.progressFill = document.getElementById('progress-fill');
-        this.elements.progressText = document.getElementById('progress-text');
+        this.elements.todayProgressPercent = document.getElementById('today-progress-percent');
+        this.elements.todayProgressFill = document.getElementById('today-progress-fill');
+        this.elements.todayProgressText = document.getElementById('today-progress-text');
+        this.elements.monthProgressPercent = document.getElementById('month-progress-percent');
+        this.elements.monthProgressFill = document.getElementById('month-progress-fill');
+        this.elements.monthProgressText = document.getElementById('month-progress-text');
         this.elements.statTotal = document.getElementById('stat-total');
         this.elements.statCompleted = document.getElementById('stat-completed');
         this.elements.statHigh = document.getElementById('stat-high');
@@ -1754,13 +1757,43 @@ const UIController = {
     },
 
     updateStats() {
+        const tasks = TaskManager.getTasks();
         const stats = TaskManager.getStats();
+        const today = new Date().toISOString().split('T')[0];
+        const currentMonth = new Date().getMonth();
+        const currentYear = new Date().getFullYear();
 
-        // Progress
-        const percent = stats.total > 0 ? Math.round((stats.completed / stats.total) * 100) : 0;
-        this.elements.progressPercent.textContent = `${percent}%`;
-        this.elements.progressFill.style.width = `${percent}%`;
-        this.elements.progressText.textContent = `${stats.completed} of ${stats.total} completed`;
+        // Today's Progress (tasks due today)
+        const todayTasks = tasks.filter(t => t.dueDate === today);
+        const todayCompleted = todayTasks.filter(t => t.completed).length;
+        const todayTotal = todayTasks.length;
+        const todayPercent = todayTotal > 0 ? Math.round((todayCompleted / todayTotal) * 100) : 0;
+
+        if (this.elements.todayProgressPercent) {
+            this.elements.todayProgressPercent.textContent = `${todayPercent}%`;
+            this.elements.todayProgressFill.style.width = `${todayPercent}%`;
+            this.elements.todayProgressText.textContent = todayTotal > 0
+                ? `${todayCompleted} of ${todayTotal} completed`
+                : 'No tasks due today';
+        }
+
+        // Month's Progress (tasks due this month)
+        const monthTasks = tasks.filter(t => {
+            if (!t.dueDate) return false;
+            const taskDate = new Date(t.dueDate);
+            return taskDate.getMonth() === currentMonth && taskDate.getFullYear() === currentYear;
+        });
+        const monthCompleted = monthTasks.filter(t => t.completed).length;
+        const monthTotal = monthTasks.length;
+        const monthPercent = monthTotal > 0 ? Math.round((monthCompleted / monthTotal) * 100) : 0;
+
+        if (this.elements.monthProgressPercent) {
+            this.elements.monthProgressPercent.textContent = `${monthPercent}%`;
+            this.elements.monthProgressFill.style.width = `${monthPercent}%`;
+            this.elements.monthProgressText.textContent = monthTotal > 0
+                ? `${monthCompleted} of ${monthTotal} completed`
+                : 'No tasks this month';
+        }
 
         // Stats
         this.animateValue(this.elements.statTotal, stats.total);
