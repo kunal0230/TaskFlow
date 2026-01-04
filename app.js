@@ -391,9 +391,8 @@ const TaskManager = {
 
         task.subtasks[subtaskIndex].completed = !task.subtasks[subtaskIndex].completed;
 
-        // Check if all subtasks are completed
-        const allCompleted = task.subtasks.every(st => st.completed);
-        task.completed = allCompleted;
+        // Note: We intentionally do NOT auto-complete the main task when all subtasks are done
+        // User wants manual control over marking the main task as complete
 
         this.saveTasks(tasks);
         return task;
@@ -987,6 +986,10 @@ const UIController = {
         this.elements.searchInput = document.getElementById('search-input');
         this.elements.addTaskBtn = document.getElementById('add-task-btn');
         this.elements.tasksContainer = document.getElementById('tasks-container');
+        this.elements.completedContainer = document.getElementById('completed-container');
+        this.elements.completedSection = document.getElementById('completed-section');
+        this.elements.completedCount = document.getElementById('completed-count');
+        this.elements.toggleCompleted = document.getElementById('toggle-completed');
         this.elements.emptyState = document.getElementById('empty-state');
         this.elements.taskCount = document.getElementById('task-count');
 
@@ -1138,6 +1141,11 @@ const UIController = {
             this.renderTasks();
             this.updateStats();
             this.elements.settingsMenu.classList.remove('active');
+        });
+
+        // Toggle Completed Section
+        this.elements.toggleCompleted?.addEventListener('click', () => {
+            this.elements.completedSection.classList.toggle('collapsed');
         });
 
         // Search
@@ -1588,11 +1596,17 @@ const UIController = {
     renderTasks() {
         const tasks = TaskManager.getFilteredTasks(this.currentFilter, this.searchQuery, this.currentCategory);
 
-        // Update task count
-        this.elements.taskCount.textContent = `${tasks.length} task${tasks.length !== 1 ? 's' : ''}`;
+        // Split into pending and completed
+        const pendingTasks = tasks.filter(t => !t.completed);
+        const completedTasks = tasks.filter(t => t.completed);
 
+        // Update task count (pending only)
+        this.elements.taskCount.textContent = `${pendingTasks.length} task${pendingTasks.length !== 1 ? 's' : ''}`;
+
+        // Handle empty state
         if (tasks.length === 0) {
             this.elements.tasksContainer.innerHTML = '';
+            this.elements.completedContainer.innerHTML = '';
             const totalTasks = TaskManager.getTasks().length;
             const emptyTitle = this.elements.emptyState.querySelector('h3');
             const emptyText = this.elements.emptyState.querySelector('p');
@@ -1606,13 +1620,29 @@ const UIController = {
                 }
             }
             this.elements.emptyState.classList.add('visible');
+            this.elements.completedSection.style.display = 'none';
             return;
         }
 
         this.elements.emptyState.classList.remove('visible');
 
-        const html = tasks.map(task => this.createTaskCard(task)).join('');
-        this.elements.tasksContainer.innerHTML = html;
+        // Render pending tasks
+        if (pendingTasks.length > 0) {
+            const pendingHtml = pendingTasks.map(task => this.createTaskCard(task)).join('');
+            this.elements.tasksContainer.innerHTML = pendingHtml;
+        } else {
+            this.elements.tasksContainer.innerHTML = '<p class="no-pending-message" style="text-align: center; color: var(--text-muted); padding: var(--spacing-lg);">🎉 All tasks completed!</p>';
+        }
+
+        // Render completed tasks
+        if (completedTasks.length > 0) {
+            this.elements.completedSection.style.display = 'block';
+            this.elements.completedCount.textContent = completedTasks.length;
+            const completedHtml = completedTasks.map(task => this.createTaskCard(task)).join('');
+            this.elements.completedContainer.innerHTML = completedHtml;
+        } else {
+            this.elements.completedSection.style.display = 'none';
+        }
 
         this.bindTaskEvents();
     },
@@ -1622,12 +1652,30 @@ const UIController = {
         const isOverdue = task.dueDate && task.dueDate < today && !task.completed;
         const isToday = task.dueDate === today;
         const formattedDate = task.dueDate ? this.formatDate(task.dueDate) : '';
+        const timeUntil = task.dueDate && !task.completed ? this.formatTimeUntilDue(task.dueDate) : null;
         const category = task.categoryId ? CategoryManager.getCategoryById(task.categoryId) : null;
 
         // Subtasks progress
         const subtasksTotal = task.subtasks?.length || 0;
         const subtasksCompleted = task.subtasks?.filter(st => st.completed).length || 0;
         const subtasksPercent = subtasksTotal > 0 ? Math.round((subtasksCompleted / subtasksTotal) * 100) : 0;
+
+        // Build subtasks HTML with checkboxes
+        let subtasksHtml = '';
+        if (subtasksTotal > 0) {
+            subtasksHtml = `
+                <div class="task-subtasks">
+                    <div class="subtask-list">
+                        ${task.subtasks.map((st, idx) => `
+                            <div class="subtask-item-display ${st.completed ? 'completed' : ''}" data-subtask-index="${idx}">
+                                <input type="checkbox" id="subtask-${task.id}-${idx}" ${st.completed ? 'checked' : ''}>
+                                <label for="subtask-${task.id}-${idx}">${Utils.escapeHtml(st.text)}</label>
+                            </div>
+                        `).join('')}
+                    </div>
+                </div>
+            `;
+        }
 
         return `
             <div class="task-card ${task.completed ? 'completed' : ''}" 
@@ -1646,33 +1694,45 @@ const UIController = {
                 </div>
                 <div class="task-content">
                     <div class="task-header">
-                        <span class="task-title">${Utils.escapeHtml(task.title)}</span>
-                        <span class="task-priority ${task.priority}">${task.priority}</span>
-                        ${category ? `
-                            <span class="task-category">
-                                <span class="task-category-dot" style="background: ${category.color}"></span>
-                                ${Utils.escapeHtml(category.name)}
-                            </span>
-                        ` : ''}
+                        <div class="task-info">
+                            <span class="task-title">${Utils.escapeHtml(task.title)}</span>
+                            <span class="task-priority ${task.priority}">${task.priority.charAt(0).toUpperCase()}</span>
+                            ${subtasksTotal > 0 ? `
+                                <span class="subtasks-progress">
+                                    <div class="subtasks-bar">
+                                        <div class="subtasks-bar-fill" style="width: ${subtasksPercent}%"></div>
+                                    </div>
+                                    <span class="subtasks-count">${subtasksCompleted}/${subtasksTotal}</span>
+                                </span>
+                            ` : ''}
+                        </div>
+                        <div class="task-right">
+                            ${formattedDate ? `
+                                <span class="task-due ${isOverdue ? 'overdue' : ''} ${isToday ? 'today' : ''}">
+                                    ${formattedDate}
+                                </span>
+                            ` : ''}
+                            ${timeUntil ? `<span class="task-time-until ${timeUntil.class}">${timeUntil.text}</span>` : ''}
+                            ${(subtasksTotal > 0 || task.description) ? `
+                                <button class="task-expand-btn" title="Show details">
+                                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <polyline points="6,9 12,15 18,9"/>
+                                    </svg>
+                                </button>
+                            ` : ''}
+                        </div>
                     </div>
-                    ${task.description ? `<p class="task-description">${Utils.escapeHtml(task.description)}</p>` : ''}
-                    <div class="task-meta">
-                        ${formattedDate ? `
-                            <span class="task-due ${isOverdue ? 'overdue' : ''} ${isToday ? 'today' : ''}">
-                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                    <circle cx="12" cy="12" r="10"/><polyline points="12,6 12,12 16,14"/>
-                                </svg>
-                                ${formattedDate}
-                            </span>
+                    <div class="task-expandable">
+                        ${category ? `
+                            <div class="task-category-row">
+                                <span class="task-category">
+                                    <span class="task-category-dot" style="background: ${category.color}"></span>
+                                    ${Utils.escapeHtml(category.name)}
+                                </span>
+                            </div>
                         ` : ''}
-                        ${subtasksTotal > 0 ? `
-                            <span class="subtasks-progress">
-                                <div class="subtasks-bar">
-                                    <div class="subtasks-bar-fill" style="width: ${subtasksPercent}%"></div>
-                                </div>
-                                ${subtasksCompleted}/${subtasksTotal}
-                            </span>
-                        ` : ''}
+                        ${task.description ? `<p class="task-description">${Utils.escapeHtml(task.description)}</p>` : ''}
+                        ${subtasksHtml}
                     </div>
                 </div>
                 <div class="task-actions">
@@ -1700,54 +1760,135 @@ const UIController = {
         `;
     },
 
+    formatTimeUntilDue(dueDateStr) {
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        const dueDate = new Date(dueDateStr + 'T00:00:00');
+        const diffTime = dueDate - today;
+        const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+
+        if (diffDays < 0) {
+            const absDays = Math.abs(diffDays);
+            return { text: `${absDays}d overdue`, class: 'overdue' };
+        } else if (diffDays === 0) {
+            return { text: 'Due today', class: 'urgent' };
+        } else if (diffDays === 1) {
+            return { text: 'Due tomorrow', class: 'urgent' };
+        } else if (diffDays <= 3) {
+            return { text: `${diffDays}d left`, class: 'soon' };
+        } else if (diffDays <= 7) {
+            return { text: `${diffDays}d left`, class: 'comfortable' };
+        } else {
+            const weeks = Math.floor(diffDays / 7);
+            return { text: weeks === 1 ? '1 week' : `${weeks} weeks`, class: 'comfortable' };
+        }
+    },
+
     bindTaskEvents() {
-        // Checkbox toggle
-        this.elements.tasksContainer.querySelectorAll('.task-checkbox input').forEach(checkbox => {
-            checkbox.addEventListener('change', (e) => {
-                const taskId = e.target.closest('.task-card').dataset.taskId;
-                const task = TaskManager.toggleComplete(taskId);
+        // Bind events for both containers
+        const containers = [this.elements.tasksContainer, this.elements.completedContainer];
 
-                if (task?.completed) {
-                    ToastManager.show('Task completed! 🎉');
-                }
+        containers.forEach(container => {
+            if (!container) return;
 
-                this.renderTasks();
-                this.updateStats();
+            // Checkbox toggle (main task)
+            container.querySelectorAll('.task-checkbox input').forEach(checkbox => {
+                checkbox.addEventListener('change', (e) => {
+                    const taskId = e.target.closest('.task-card').dataset.taskId;
+                    const task = TaskManager.toggleComplete(taskId);
+
+                    if (task?.completed) {
+                        ToastManager.show('Task completed! 🎉');
+                    }
+
+                    this.renderTasks();
+                    this.updateStats();
+                    CalendarController.refresh();
+                });
+            });
+
+            // Subtask checkbox toggle
+            container.querySelectorAll('.subtask-item-display input').forEach(checkbox => {
+                checkbox.addEventListener('change', (e) => {
+                    e.stopPropagation();
+                    const card = e.target.closest('.task-card');
+                    const taskId = card.dataset.taskId;
+                    const wasExpanded = card.classList.contains('expanded');
+                    const subtaskIndex = parseInt(e.target.closest('.subtask-item-display').dataset.subtaskIndex);
+                    TaskManager.toggleSubtask(taskId, subtaskIndex);
+                    this.renderTasks();
+                    this.updateStats();
+                    CalendarController.refresh();
+
+                    // Restore expanded state after re-render
+                    if (wasExpanded) {
+                        const newCard = document.querySelector(`.task-card[data-task-id="${taskId}"]`);
+                        if (newCard) {
+                            newCard.classList.add('expanded');
+                        }
+                    }
+                });
+            });
+
+            // Edit button
+            container.querySelectorAll('.edit-task').forEach(btn => {
+                btn.addEventListener('click', (e) => {
+                    const taskId = e.target.closest('.task-card').dataset.taskId;
+                    const tasks = TaskManager.getTasks();
+                    const task = tasks.find(t => t.id === taskId);
+                    if (task) {
+                        this.openTaskModal(task);
+                    }
+                });
+            });
+
+            // Duplicate button
+            container.querySelectorAll('.duplicate-task').forEach(btn => {
+                btn.addEventListener('click', (e) => {
+                    const taskId = e.target.closest('.task-card').dataset.taskId;
+                    TaskManager.duplicateTask(taskId);
+                    ToastManager.show('Task duplicated!');
+                    this.renderTasks();
+                    this.updateStats();
+                });
+            });
+
+            // Delete button
+            container.querySelectorAll('.delete-task').forEach(btn => {
+                btn.addEventListener('click', (e) => {
+                    const taskId = e.target.closest('.task-card').dataset.taskId;
+                    this.openDeleteModal(taskId);
+                });
+            });
+
+            // Expand button
+            container.querySelectorAll('.task-expand-btn').forEach(btn => {
+                btn.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    const card = e.target.closest('.task-card');
+                    card.classList.toggle('expanded');
+                });
+            });
+
+            // Click anywhere on task content to expand (if expandable)
+            container.querySelectorAll('.task-content').forEach(content => {
+                content.addEventListener('click', (e) => {
+                    // Don't expand if clicking on buttons, checkboxes, or subtasks
+                    if (e.target.closest('.task-expand-btn') ||
+                        e.target.closest('.subtask-checkbox') ||
+                        e.target.closest('.task-actions')) {
+                        return;
+                    }
+                    const card = e.target.closest('.task-card');
+                    const hasExpandable = card.querySelector('.task-expandable');
+                    if (hasExpandable && hasExpandable.children.length > 0) {
+                        card.classList.toggle('expanded');
+                    }
+                });
             });
         });
 
-        // Edit button
-        this.elements.tasksContainer.querySelectorAll('.edit-task').forEach(btn => {
-            btn.addEventListener('click', (e) => {
-                const taskId = e.target.closest('.task-card').dataset.taskId;
-                const tasks = TaskManager.getTasks();
-                const task = tasks.find(t => t.id === taskId);
-                if (task) {
-                    this.openTaskModal(task);
-                }
-            });
-        });
-
-        // Duplicate button
-        this.elements.tasksContainer.querySelectorAll('.duplicate-task').forEach(btn => {
-            btn.addEventListener('click', (e) => {
-                const taskId = e.target.closest('.task-card').dataset.taskId;
-                TaskManager.duplicateTask(taskId);
-                ToastManager.show('Task duplicated!');
-                this.renderTasks();
-                this.updateStats();
-            });
-        });
-
-        // Delete button
-        this.elements.tasksContainer.querySelectorAll('.delete-task').forEach(btn => {
-            btn.addEventListener('click', (e) => {
-                const taskId = e.target.closest('.task-card').dataset.taskId;
-                this.openDeleteModal(taskId);
-            });
-        });
-
-        // Drag and drop
+        // Drag and drop (pending only)
         this.bindDragEvents();
     },
 
