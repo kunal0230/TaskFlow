@@ -1448,6 +1448,17 @@ body {
     color: var(--priority-low);
 }
 
+.task-category-badge {
+    display: inline-flex;
+    align-items: center;
+    padding: 1px 8px;
+    border-radius: 4px;
+    font-size: 10px;
+    font-weight: 500;
+    letter-spacing: 0.2px;
+    white-space: nowrap;
+}
+
 .task-category {
     display: inline-flex;
     align-items: center;

@@ -1697,6 +1697,7 @@ const UIController = {
                         <div class="task-info">
                             <span class="task-title">${Utils.escapeHtml(task.title)}</span>
                             <span class="task-priority ${task.priority}">${task.priority.charAt(0).toUpperCase()}</span>
+                            ${category ? `<span class="task-category-badge" style="background: ${category.color}20; color: ${category.color}; border: 1px solid ${category.color}40;">${Utils.escapeHtml(category.name)}</span>` : ''}
                             ${subtasksTotal > 0 ? `
                                 <span class="subtasks-progress">
                                     <div class="subtasks-bar">
