@@ -8,33 +8,33 @@ A smart, feature-rich task management web application with a beautiful UI, themi
 
 ### Core Features
 
-- ✅ **Task Management** - Create, edit, delete, and mark tasks complete
-- 🎯 **Priority Levels** - High, Medium, Low with color coding
-- 📅 **Due Dates** - Set deadlines with overdue highlighting
-- 📁 **Categories** - Organize tasks with custom colored categories
-- ✅ **Subtasks** - Break tasks into smaller items with progress tracking
-- 🔄 **Drag & Drop** - Reorder tasks by dragging
+-  **Task Management** - Create, edit, delete, and mark tasks complete
+-  **Priority Levels** - High, Medium, Low with color coding
+-  **Due Dates** - Set deadlines with overdue highlighting
+-  **Categories** - Organize tasks with custom colored categories
+-  **Subtasks** - Break tasks into smaller items with progress tracking
+-  **Drag & Drop** - Reorder tasks by dragging
 
 ### Views
 
-- 📋 **List View** - Traditional task list with filtering
-- 📅 **Calendar View** - Visualize tasks on a monthly calendar
-- 🔍 **Search** - Real-time task filtering
+-  **List View** - Traditional task list with filtering
+-  **Calendar View** - Visualize tasks on a monthly calendar
+-  **Search** - Real-time task filtering
 
 ### Customization
 
-- 🌙 **Dark/Light Theme** - Toggle between themes
-- 🎨 **6 Accent Colors** - Purple, Blue, Green, Orange, Pink, Red
-- ⚙️ **Sorting Options** - By priority, date, alphabetical, or custom
+-  **Dark/Light Theme** - Toggle between themes
+-  **6 Accent Colors** - Purple, Blue, Green, Orange, Pink, Red
+-  **Sorting Options** - By priority, date, alphabetical, or custom
 
 ### Smart Features
 
-- ⌨️ **Keyboard Shortcuts** - Fast navigation
-- 💾 **Local Storage** - Data persists in browser
-- 📤 **Export/Import** - Backup tasks as JSON
-- 🔔 **Toast Notifications** - Feedback for all actions
+-  **Keyboard Shortcuts** - Fast navigation
+-  **Local Storage** - Data persists in browser
+-  **Export/Import** - Backup tasks as JSON
+-  **Toast Notifications** - Feedback for all actions
 
-## 🚀 Quick Start
+##  Quick Start
 
 ### Option 1: Direct Open
 
@@ -64,7 +64,7 @@ open http://localhost:3000
 | `C` | Toggle calendar view |
 | `Esc` | Close modals |
 
-## 📱 Usage Guide
+##  Usage Guide
 
 ### Getting Started
 
@@ -94,14 +94,14 @@ open http://localhost:3000
 2. "Export Tasks" downloads JSON file
 3. "Import Tasks" loads from JSON file
 
-## 🛠️ Tech Stack
+##  Tech Stack
 
 - **HTML5** - Semantic structure
 - **CSS3** - Custom properties, Flexbox, Grid
 - **Vanilla JavaScript** - No frameworks
 - **Local Storage** - Data persistence
 
-## 📂 Project Structure
+##  Project Structure
 
 ```
 TaskFlow/
@@ -111,7 +111,7 @@ TaskFlow/
 └── README.md       # This file
 ```
 
-## 🔐 Data Storage
+##  Data Storage
 
 All data is stored in browser's localStorage:
 
@@ -122,7 +122,7 @@ All data is stored in browser's localStorage:
 - `taskflow_theme` - Theme preference
 - `taskflow_accent` - Accent color preference
 
-## 🤝 Contributing
+##  Contributing
 
 1. Fork the repository
 2. Create feature branch (`git checkout -b feature/amazing-feature`)
@@ -130,11 +130,11 @@ All data is stored in browser's localStorage:
 4. Push to branch (`git push origin feature/amazing-feature`)
 5. Open a Pull Request
 
-## 📄 License
+##  License
 
 This project is open source and available under the [MIT License](LICENSE).
 
-## 👤 Author
+##  Author
 
 **Kunal Chaugule**
 
@@ -142,4 +142,4 @@ This project is open source and available under the [MIT License](LICENSE).
 
 ---
 
-<p align="center">Made with ❤️ for productivity</p>
+>
