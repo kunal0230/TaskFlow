@@ -1164,6 +1164,43 @@ body {
     padding: var(--spacing-md);
 }
 
+/* Category Item Wrapper */
+.category-item-wrapper {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    position: relative;
+}
+
+.category-item-wrapper .category-item {
+    flex: 1;
+}
+
+.category-delete-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 24px;
+    height: 24px;
+    padding: 0;
+    background: transparent;
+    border: none;
+    border-radius: var(--radius-sm);
+    color: var(--text-muted);
+    cursor: pointer;
+    opacity: 0;
+    transition: all var(--transition-fast);
+}
+
+.category-item-wrapper:hover .category-delete-btn {
+    opacity: 1;
+}
+
+.category-delete-btn:hover {
+    background: var(--priority-high-bg);
+    color: var(--priority-high);
+}
+
 /* Shortcuts Card */
 .shortcuts-list {
     display: flex;

@@ -922,7 +922,7 @@ const CalendarController = {
         this.elements.selectedDayTasks.querySelectorAll('.delete-cal-task').forEach(btn => {
             btn.addEventListener('click', (e) => {
                 const taskId = e.target.closest('.selected-task-card').dataset.taskId;
-                UIController.openDeleteModal(taskId);
+                UIController.openDeleteModal('task', taskId);
             });
         });
     },
@@ -1382,12 +1382,19 @@ const UIController = {
         this.elements.categoriesList.innerHTML = categories.map(cat => {
             const count = tasks.filter(t => t.categoryId === cat.id).length;
             return `
-                <button class="category-item ${this.currentCategory === cat.id ? 'active' : ''}" 
-                        data-category="${cat.id}">
-                    <span class="category-dot" style="background: ${cat.color}"></span>
-                    ${Utils.escapeHtml(cat.name)}
-                    <span class="category-count">${count}</span>
-                </button>
+                <div class="category-item-wrapper">
+                    <button class="category-item ${this.currentCategory === cat.id ? 'active' : ''}" 
+                            data-category="${cat.id}">
+                        <span class="category-dot" style="background: ${cat.color}"></span>
+                        ${Utils.escapeHtml(cat.name)}
+                        <span class="category-count">${count}</span>
+                    </button>
+                    <button class="category-delete-btn" data-category-id="${cat.id}" title="Delete category">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+                        </svg>
+                    </button>
+                </div>
             `;
         }).join('');
 
@@ -1410,6 +1417,17 @@ const UIController = {
                 this.currentFilter = 'all';
 
                 this.renderTasks();
+            });
+        });
+
+        // Bind category delete events
+        this.elements.categoriesList.querySelectorAll('.category-delete-btn').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                const categoryId = btn.dataset.categoryId;
+                const category = CategoryManager.getCategoryById(categoryId);
+
+                this.openDeleteModal('category', categoryId);
             });
         });
     },
@@ -1556,27 +1574,55 @@ const UIController = {
         CalendarController.refresh();
     },
 
-    openDeleteModal(taskId) {
+    openDeleteModal(type, id) {
         this.elements.deleteModal.classList.add('active');
-        this.elements.deleteModal.dataset.taskId = taskId;
+        this.elements.deleteModal.dataset.deleteType = type;
+        this.elements.deleteModal.dataset.deleteId = id;
+
+        const modalTitle = this.elements.deleteModal.querySelector('h2');
+        const modalMessage = this.elements.deleteModal.querySelector('.delete-message');
+
+        if (type === 'category') {
+            const category = CategoryManager.getCategoryById(id);
+            modalTitle.textContent = 'Delete Category';
+            modalMessage.textContent = `Are you sure you want to delete category "${category?.name}"? Tasks in this category will become uncategorized.`;
+        } else {
+            modalTitle.textContent = 'Delete Task';
+            modalMessage.textContent = 'Are you sure you want to delete this task? This action cannot be undone.';
+        }
     },
 
     closeDeleteModal() {
         this.elements.deleteModal.classList.remove('active');
-        delete this.elements.deleteModal.dataset.taskId;
+        delete this.elements.deleteModal.dataset.deleteType;
+        delete this.elements.deleteModal.dataset.deleteId;
+        delete this.elements.deleteModal.dataset.taskId; // Cleanup legacy
     },
 
     handleDeleteConfirm() {
-        const taskId = this.elements.deleteModal.dataset.taskId;
-        if (taskId) {
+        const type = this.elements.deleteModal.dataset.deleteType;
+        const id = this.elements.deleteModal.dataset.deleteId;
+
+        if (type === 'category' && id) {
+            CategoryManager.deleteCategory(id);
+            ToastManager.show('Category deleted');
+
+            // Clear category filter if this was the active one
+            if (this.currentCategory === id) {
+                this.currentCategory = null;
+            }
+        } else if ((type === 'task' || !type) && (id || this.elements.deleteModal.dataset.taskId)) {
+            // Handle legacy taskId for backward compatibility or explicit task type
+            const taskId = id || this.elements.deleteModal.dataset.taskId;
             TaskManager.deleteTask(taskId);
             ToastManager.show('Task deleted');
-            this.closeDeleteModal();
-            this.renderTasks();
-            this.updateStats();
-            this.renderCategories();
-            CalendarController.refresh();
         }
+
+        this.closeDeleteModal();
+        this.renderTasks();
+        this.updateStats();
+        this.renderCategories();
+        CalendarController.refresh();
     },
 
     setFilter(filter) {
@@ -1858,7 +1904,7 @@ const UIController = {
             container.querySelectorAll('.delete-task').forEach(btn => {
                 btn.addEventListener('click', (e) => {
                     const taskId = e.target.closest('.task-card').dataset.taskId;
-                    this.openDeleteModal(taskId);
+                    this.openDeleteModal('task', taskId);
                 });
             });
 
