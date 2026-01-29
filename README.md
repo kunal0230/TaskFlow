@@ -1,10 +1,10 @@
-# TaskFlow ✅
+# TaskFlow 
 
 A smart, feature-rich task management web application with a beautiful UI, theming, calendar view, and local storage persistence.
 
 ![TaskFlow Demo](https://img.shields.io/badge/Version-1.0.0-blue) ![License](https://img.shields.io/badge/License-MIT-green) ![Status](https://img.shields.io/badge/Status-Active-success)
 
-## ✨ Features
+##  Features
 
 ### Core Features
 
