@@ -53,7 +53,9 @@ A smart, feature-rich task management web application with a beautiful UI, themi
 - **Shortcuts:** Comprehensive keyboard shortcuts for power users
 - **Search:** Real-time filtered search across all tasks
 - **Export/Import:** JSON-based data export for backups or migration
+- **Export/Import:** JSON-based data export for backups or migration
 - **Notifications:** Non-intrusive toast notifications for user actions
+- **Storage Indicator:** Real-time visualization of local data usage (KB/MB) in settings
 
 ## Quick Start
 

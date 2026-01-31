@@ -1506,16 +1506,19 @@ const UIController = {
         this.bindEvents();
         this.checkAuthState();
 
-        // Planner Toggle logic added in bindEvents or here
+        // Planner Toggle logic
         document.getElementById('planner-toggle')?.addEventListener('click', () => {
             this.showPlanner();
+        });
+
+        // Back to Dashboard logic
+        document.getElementById('back-to-dashboard')?.addEventListener('click', () => {
+            this.showDashboard();
         });
 
         document.getElementById('focus-mode-btn')?.addEventListener('click', () => {
             this.toggleFocusMode();
         });
-
-
     },
 
     toggleFocusMode() {
@@ -1565,6 +1568,7 @@ const UIController = {
         this.elements.importBtn = document.getElementById('import-btn');
         this.elements.importFile = document.getElementById('import-file');
         this.elements.clearCompletedBtn = document.getElementById('clear-completed-btn');
+        this.elements.storageUsage = document.getElementById('storage-usage');
 
         // Sort
         this.elements.sortBtn = document.getElementById('sort-btn');
@@ -1661,6 +1665,7 @@ const UIController = {
         // Settings Menu
         this.elements.settingsBtn.addEventListener('click', (e) => {
             e.stopPropagation();
+            this.updateStorageUsage(); // Update usage when opening
             this.elements.settingsMenu.classList.toggle('active');
             this.elements.accentMenu.classList.remove('active');
         });
@@ -1851,7 +1856,12 @@ const UIController = {
 
     checkAuthState() {
         if (AuthManager.isLoggedIn()) {
-            this.showDashboard();
+            const lastView = localStorage.getItem('taskflow_current_view');
+            if (lastView === 'planner') {
+                this.showPlanner();
+            } else {
+                this.showDashboard();
+            }
         } else {
             this.showAuthView();
         }
@@ -1867,6 +1877,7 @@ const UIController = {
         this.elements.authView.classList.remove('active');
         this.elements.dashboardView.classList.add('active');
         document.getElementById('planner-view').classList.remove('active');
+        localStorage.setItem('taskflow_current_view', 'dashboard');
 
         const user = AuthManager.getCurrentUser();
         this.elements.userGreeting.textContent = `Hello, ${user}`;
@@ -1881,6 +1892,7 @@ const UIController = {
         this.elements.authView.classList.remove('active');
         this.elements.dashboardView.classList.remove('active');
         document.getElementById('planner-view').classList.add('active');
+        localStorage.setItem('taskflow_current_view', 'planner');
         PlannerController.init();
         PlannerController.show();
     },
@@ -1902,6 +1914,38 @@ const UIController = {
         this.elements.signupForm.reset();
         this.elements.loginError.textContent = '';
         this.elements.signupError.textContent = '';
+    },
+
+    updateStorageUsage() {
+        let totalBytes = 0;
+        for (let key in localStorage) {
+            // Count all keys related to TaskFlow
+            if (localStorage.hasOwnProperty(key) && typeof localStorage[key] === 'string' && key.startsWith('taskflow_')) {
+                totalBytes += localStorage[key].length * 2; // Approx 2 bytes per char (UTF-16)
+            }
+        }
+
+        let displaySize = '';
+        if (totalBytes < 1024) {
+            displaySize = `${totalBytes} B`;
+        } else if (totalBytes < 1024 * 1024) {
+            displaySize = `${(totalBytes / 1024).toFixed(2)} KB`;
+        } else {
+            displaySize = `${(totalBytes / (1024 * 1024)).toFixed(2)} MB`;
+        }
+
+        if (this.elements.storageUsage) {
+            this.elements.storageUsage.textContent = displaySize;
+
+            // Warn if getting close to typical 5MB limit
+            const limit = 5 * 1024 * 1024;
+            const percentage = (totalBytes / limit) * 100;
+            if (percentage > 80) {
+                this.elements.storageUsage.style.color = 'var(--priority-high)';
+            } else {
+                this.elements.storageUsage.style.color = 'var(--text-muted)';
+            }
+        }
     },
 
     handleLogin(e) {
