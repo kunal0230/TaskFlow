@@ -1,40 +1,61 @@
-# TaskFlow 
+# TaskFlow
 
 A smart, feature-rich task management web application with a beautiful UI, theming, calendar view, and local storage persistence.
 
 ![TaskFlow Demo](https://img.shields.io/badge/Version-1.0.0-blue) ![License](https://img.shields.io/badge/License-MIT-green) ![Status](https://img.shields.io/badge/Status-Active-success)
 
-##  Features
+> **Note:** I built TaskFlow for my own personal productivity. It is free for anyone to use. Active deployment is available on Vercel. **Privacy First:** All data is stored locally in your browser (Local Storage). No information is sent to any server, ensuring your tasks remain completely private and secure.
 
-### Core Features
+## Features
 
--  **Task Management** - Create, edit, delete, and mark tasks complete
--  **Priority Levels** - High, Medium, Low with color coding
--  **Due Dates** - Set deadlines with overdue highlighting
--  **Categories** - Organize tasks with custom colored categories
--  **Subtasks** - Break tasks into smaller items with progress tracking
--  **Drag & Drop** - Reorder tasks by dragging
+### Core Functionality
 
-### Views
+- **Advanced Task Management**
+  - Create, edit, delete, and duplicate tasks with ease
+  - Set priority levels (High, Medium, Low) with distinct visual indicators
+  - Define due dates and track overdue status
+  - Organize tasks into custom, color-coded categories
+  - Break down complex items into subtasks with progress tracking
 
--  **List View** - Traditional task list with filtering
--  **Calendar View** - Visualize tasks on a monthly calendar
--  **Search** - Real-time task filtering
+- **Interactive Day Planner**
+  - dedicated timeline view for daily scheduling (06:00 AM - 12:00 AM)
+  - Drag-and-drop tasks from unscheduled sidebar to timeline
+  - Adjust task duration by dragging the bottom edge of task cards
+  - Visual time marker indicating current time
+  - Auto-scrolling to current time on open
 
-### Customization
+- **Focus Mode (Spotlight)**
+  - Toggle "Focus Mode" to minimize distractions
+  - Active task (based on current time) remains fully highlighted
+  - Inactive tasks are dimmed to reduce visual noise
+  - Hovering over dimmed tasks temporarily restores visibility for quick reference
 
--  **Dark/Light Theme** - Toggle between themes
--  **6 Accent Colors** - Purple, Blue, Green, Orange, Pink, Red
--  **Sorting Options** - By priority, date, alphabetical, or custom
+- **Smart Auto-Scheduling**
+  - One-click "Auto-Schedule" feature to intelligently place unscheduled tasks
+  - Optimization algorithm prioritizes tasks by urgency and duration
+  - Automatically identifies and fills empty time slots in your day
 
-### Smart Features
+### User Interface & Experience
 
--  **Keyboard Shortcuts** - Fast navigation
--  **Local Storage** - Data persists in browser
--  **Export/Import** - Backup tasks as JSON
--  **Toast Notifications** - Feedback for all actions
+- **Views & Navigation**
+  - **List View:** Traditional vertical task list with robust filtering
+  - **Calendar View:** Monthly overview for long-term planning
+  - **Day Planner:** Granular hourly view for daily execution
 
-##  Quick Start
+- **Customization**
+  - **Themes:** Toggable Dark and Light modes
+  - **Accent Colors:** Six professional color schemes (Purple, Blue, Green, Orange, Pink, Red)
+  - **Layout:** Responsive design that adapts to various screen sizes
+
+### Technical & Utility
+
+- **Data Persistence:** Robust local storage implementation ensures data safety
+- **Shortcuts:** Comprehensive keyboard shortcuts for power users
+- **Search:** Real-time filtered search across all tasks
+- **Export/Import:** JSON-based data export for backups or migration
+- **Notifications:** Non-intrusive toast notifications for user actions
+
+## Quick Start
 
 ### Option 1: Direct Open
 
@@ -64,7 +85,7 @@ open http://localhost:3000
 | `C` | Toggle calendar view |
 | `Esc` | Close modals |
 
-##  Usage Guide
+## Usage Guide
 
 ### Getting Started
 
@@ -94,14 +115,14 @@ open http://localhost:3000
 2. "Export Tasks" downloads JSON file
 3. "Import Tasks" loads from JSON file
 
-##  Tech Stack
+## Tech Stack
 
 - **HTML5** - Semantic structure
 - **CSS3** - Custom properties, Flexbox, Grid
 - **Vanilla JavaScript** - No frameworks
 - **Local Storage** - Data persistence
 
-##  Project Structure
+## Project Structure
 
 ```
 TaskFlow/
@@ -111,7 +132,7 @@ TaskFlow/
 └── README.md       # This file
 ```
 
-##  Data Storage
+## Data Storage
 
 All data is stored in browser's localStorage:
 
@@ -122,7 +143,7 @@ All data is stored in browser's localStorage:
 - `taskflow_theme` - Theme preference
 - `taskflow_accent` - Accent color preference
 
-##  Contributing
+## Contributing
 
 1. Fork the repository
 2. Create feature branch (`git checkout -b feature/amazing-feature`)
@@ -130,11 +151,11 @@ All data is stored in browser's localStorage:
 4. Push to branch (`git push origin feature/amazing-feature`)
 5. Open a Pull Request
 
-##  License
+## License
 
 This project is open source and available under the [MIT License](LICENSE).
 
-##  Author
+## Author
 
 **Kunal Chaugule**
 
