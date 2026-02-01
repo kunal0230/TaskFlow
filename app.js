@@ -998,6 +998,23 @@ const PlannerController = {
             this.handleDrop(e);
         });
 
+        // Drag to Unschedule (Sidebar)
+        this.elements.unscheduledList?.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            e.dataTransfer.dropEffect = 'move';
+            this.elements.unscheduledList.classList.add('drag-over');
+        });
+
+        this.elements.unscheduledList?.addEventListener('dragleave', (e) => {
+            this.elements.unscheduledList.classList.remove('drag-over');
+        });
+
+        this.elements.unscheduledList?.addEventListener('drop', (e) => {
+            e.preventDefault();
+            this.elements.unscheduledList.classList.remove('drag-over');
+            this.handleUnscheduleDrop(e);
+        });
+
         // Add Task Button
         document.getElementById('planner-add-task-btn')?.addEventListener('click', () => {
             UIController.openTaskModal();
@@ -1140,6 +1157,12 @@ const PlannerController = {
                     </div>
                     ${preferredTimeHtml}
                     ${scheduleBtnHtml}
+                    <button class="edit-task-btn" data-id="${task.id}" title="Edit Task" style="margin-left: auto; padding: 4px; color: var(--text-muted); background: transparent; border: none; cursor: pointer;">
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                             <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
+                             <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
+                        </svg>
+                    </button>
                 </div>
             </div>
         `}).join('');
@@ -1168,6 +1191,27 @@ const PlannerController = {
                 this.quickScheduleTask(taskId, time);
             });
         });
+
+        // Bind Edit Buttons (New)
+        this.elements.unscheduledList.querySelectorAll('.edit-task-btn').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                const taskId = btn.dataset.id;
+                const task = TaskManager.getTasks().find(t => t.id === taskId);
+                if (task) UIController.openTaskModal(task);
+            });
+        });
+    },
+
+    handleUnscheduleDrop(e) {
+        if (!this.draggedTask) return;
+        this.unscheduleTask(this.draggedTask.id);
+    },
+
+    unscheduleTask(taskId) {
+        TaskManager.updateTask(taskId, { plannedStartTime: null });
+        this.render();
+        ToastManager.show('Task unscheduled');
     },
 
     renderScheduledTasks(tasks) {
@@ -1214,7 +1258,19 @@ const PlannerController = {
                     <div class="scheduled-task-time">${this.formatTime(hours, minutes)} - ${this.formatEndTime(hours, minutes, task.plannedDuration || 30)}</div>
                 </div>
                 <div class="task-actions">
-                     <button class="task-check-btn" title="${task.completed ? 'Mark Undone' : 'Mark Done'}">
+                    <button class="task-edit-btn" title="Edit Task" style="padding: 2px;">
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
+                            <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
+                        </svg>
+                    </button>
+                    <button class="task-unschedule-btn" title="Unschedule Task" style="padding: 2px;">
+                         <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <polyline points="9 10 4 15 9 20"></polyline>
+                            <path d="M20 4v7a4 4 0 0 1-4 4H4"></path>
+                        </svg>
+                    </button>
+                    <button class="task-check-btn" title="${task.completed ? 'Mark Undone' : 'Mark Done'}">
                          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                             ${task.completed ? '<path d="M5 12h14"/>' : '<polyline points="20 6 9 17 4 12"/>'}
                         </svg>
@@ -1245,6 +1301,20 @@ const PlannerController = {
             deleteBtn.addEventListener('click', (e) => {
                 e.stopPropagation(); // Prevent drag start if clicked
                 UIController.openDeleteModal('task', task.id);
+            });
+
+            // Bind Unschedule Event
+            const unscheduleBtn = el.querySelector('.task-unschedule-btn');
+            unscheduleBtn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                this.unscheduleTask(task.id);
+            });
+
+            // Bind Edit Event
+            const editBtn = el.querySelector('.task-edit-btn');
+            editBtn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                UIController.openTaskModal(task);
             });
 
             // Bind Check Event
