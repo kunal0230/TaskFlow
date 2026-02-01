@@ -3121,3 +3121,11 @@ body.focus-mode .planner-task-card:hover {
     filter: none;
     transform: translateY(-2px);
 }
+/* Planner Clock */
+.planner-clock {
+    font-size: var(--font-size-lg);
+    font-weight: 600;
+    color: var(--accent-primary);
+    margin-top: 4px;
+    font-variant-numeric: tabular-nums;
+}

@@ -970,6 +970,19 @@ const PlannerController = {
         this.bindEvents();
         this.initialized = true;
         this.render();
+
+        // Start live updates
+        this.updateClock();
+        setInterval(() => {
+            this.updateClock();
+            this.renderCurrentTimeLine();
+        }, 60000); // Every minute
+    },
+
+    updateClock() {
+        if (!this.elements.clockDisplay) return;
+        const now = new Date();
+        this.elements.clockDisplay.textContent = now.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
     },
 
     cacheElements() {
@@ -980,6 +993,7 @@ const PlannerController = {
         this.elements.unscheduledCount = document.getElementById('unscheduled-count');
         this.elements.completedCount = document.getElementById('planner-completed-count'); // New
         this.elements.dateDisplay = document.getElementById('planner-date');
+        this.elements.clockDisplay = document.getElementById('planner-clock'); // New
         this.elements.backBtn = document.getElementById('back-to-dashboard');
     },
 
@@ -1217,42 +1231,73 @@ const PlannerController = {
     renderScheduledTasks(tasks) {
         this.elements.timeline.querySelectorAll('.scheduled-task').forEach(el => el.remove());
 
+        // Sort tasks by start time
+        tasks.sort((a, b) => {
+            const [h1, m1] = a.plannedStartTime.split(':').map(Number);
+            const [h2, m2] = b.plannedStartTime.split(':').map(Number);
+            return (h1 * 60 + m1) - (h2 * 60 + m2);
+        });
+
+        const overlapGroups = [];
         tasks.forEach(task => {
-            const el = document.createElement('div');
-            el.className = 'scheduled-task';
-            el.draggable = true;
-            el.dataset.id = task.id;
+            const [h, m] = task.plannedStartTime.split(':').map(Number);
+            const start = h * 60 + m;
+            const end = start + (task.plannedDuration || 30);
 
-            const [hours, minutes] = task.plannedStartTime.split(':').map(Number);
-            const totalMinutes = (hours * 60) + minutes;
-            const startMinutes = this.startHour * 60;
-            const offsetMinutes = totalMinutes - startMinutes;
-
-            // 1. Calculate Top Position (Start time)
-            const top = (offsetMinutes / 60) * this.timeSlotHeight;
-
-            // 2. Calculate Height (Duration)
-            // Formula: (Duration in Mins / 60 mins) * Pixels per Hour
-            const durationMins = task.plannedDuration || 30;
-            const height = (durationMins / 60) * this.timeSlotHeight;
-
-            el.style.top = `${top + 16}px`; // +16 accounts for header padding
-            el.style.height = `${height}px`; // Apply dynamic height
-
-            // Color Coding Support
-            // Color Coding Support
-            if (task.color) {
-                el.style.background = task.color;
-                el.style.border = '1px solid rgba(255,255,255,0.2)';
+            let placed = false;
+            for (const group of overlapGroups) {
+                if (group.some(t => {
+                    const [th, tm] = t.plannedStartTime.split(':').map(Number);
+                    const tStart = th * 60 + tm;
+                    const tEnd = tStart + (t.plannedDuration || 30);
+                    return (start < tEnd && end > tStart);
+                })) {
+                    group.push(task);
+                    placed = true;
+                    break;
+                }
             }
+            if (!placed) overlapGroups.push([task]);
+        });
 
-            // Completed Style
-            if (task.completed) {
-                el.style.opacity = '0.6';
-                el.style.filter = 'grayscale(0.5)';
-            }
+        overlapGroups.forEach(group => {
+            const width = 100 / group.length;
+            group.forEach((task, index) => {
+                const el = document.createElement('div');
+                el.className = 'scheduled-task';
+                el.draggable = true;
+                el.dataset.id = task.id;
 
-            el.innerHTML = `
+                const [hours, minutes] = task.plannedStartTime.split(':').map(Number);
+                const totalMinutes = (hours * 60) + minutes;
+                const startMinutes = this.startHour * 60;
+                const offsetMinutes = totalMinutes - startMinutes;
+
+                const top = (offsetMinutes / 60) * this.timeSlotHeight;
+                const durationMins = task.plannedDuration || 30;
+                const height = (durationMins / 60) * this.timeSlotHeight;
+
+                el.style.top = `${top}px`;
+                el.style.height = `${height}px`;
+                el.style.width = `calc(${width}% - 12px)`; // Subtract gap
+                el.style.left = `calc(${index * width}% + 56px)`; // +56px for time labels width
+
+                // Color Coding Support
+
+                // Color Coding Support
+                // Color Coding Support
+                if (task.color) {
+                    el.style.background = task.color;
+                    el.style.border = '1px solid rgba(255,255,255,0.2)';
+                }
+
+                // Completed Style
+                if (task.completed) {
+                    el.style.opacity = '0.6';
+                    el.style.filter = 'grayscale(0.5)';
+                }
+
+                el.innerHTML = `
                 <div class="scheduled-task-content">
                     <div class="scheduled-task-title" ${task.completed ? 'style="text-decoration: line-through;"' : ''}>${Utils.escapeHtml(task.title)}</div>
                     <div class="scheduled-task-time">${this.formatTime(hours, minutes)} - ${this.formatEndTime(hours, minutes, task.plannedDuration || 30)}</div>
@@ -1284,63 +1329,64 @@ const PlannerController = {
                 </div>
             `;
 
-            el.addEventListener('dragstart', (e) => {
-                this.draggedTask = task;
-                e.dataTransfer.setData('text/plain', task.id);
-                e.dataTransfer.effectAllowed = 'move';
-                setTimeout(() => el.style.opacity = '0.5', 0);
+                el.addEventListener('dragstart', (e) => {
+                    this.draggedTask = task;
+                    e.dataTransfer.setData('text/plain', task.id);
+                    e.dataTransfer.effectAllowed = 'move';
+                    setTimeout(() => el.style.opacity = '0.5', 0);
+                });
+
+                el.addEventListener('dragend', () => {
+                    el.style.opacity = '1';
+                    this.draggedTask = null;
+                });
+
+                // Bind Delete Event
+                const deleteBtn = el.querySelector('.task-delete-btn');
+                deleteBtn.addEventListener('click', (e) => {
+                    e.stopPropagation(); // Prevent drag start if clicked
+                    UIController.openDeleteModal('task', task.id);
+                });
+
+                // Bind Unschedule Event
+                const unscheduleBtn = el.querySelector('.task-unschedule-btn');
+                unscheduleBtn.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    this.unscheduleTask(task.id);
+                });
+
+                // Bind Edit Event
+                const editBtn = el.querySelector('.task-edit-btn');
+                editBtn.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    UIController.openTaskModal(task);
+                });
+
+                // Bind Check Event
+                const checkBtn = el.querySelector('.task-check-btn');
+                checkBtn.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    TaskManager.toggleComplete(task.id);
+                    UIController.renderTasks(); // Updates dashboard
+                    this.render(); // Updates planner
+                });
+
+
+
+                // Add Resize Handle
+                const resizeHandle = document.createElement('div');
+                resizeHandle.className = 'resize-handle';
+                el.appendChild(resizeHandle);
+
+                // Bind Resize Event
+                resizeHandle.addEventListener('mousedown', (e) => {
+                    e.stopPropagation();
+                    e.preventDefault(); // Prevent text selection
+                    this.handleResizeStart(e, task, el);
+                });
+
+                this.elements.timeline.appendChild(el);
             });
-
-            el.addEventListener('dragend', () => {
-                el.style.opacity = '1';
-                this.draggedTask = null;
-            });
-
-            // Bind Delete Event
-            const deleteBtn = el.querySelector('.task-delete-btn');
-            deleteBtn.addEventListener('click', (e) => {
-                e.stopPropagation(); // Prevent drag start if clicked
-                UIController.openDeleteModal('task', task.id);
-            });
-
-            // Bind Unschedule Event
-            const unscheduleBtn = el.querySelector('.task-unschedule-btn');
-            unscheduleBtn.addEventListener('click', (e) => {
-                e.stopPropagation();
-                this.unscheduleTask(task.id);
-            });
-
-            // Bind Edit Event
-            const editBtn = el.querySelector('.task-edit-btn');
-            editBtn.addEventListener('click', (e) => {
-                e.stopPropagation();
-                UIController.openTaskModal(task);
-            });
-
-            // Bind Check Event
-            const checkBtn = el.querySelector('.task-check-btn');
-            checkBtn.addEventListener('click', (e) => {
-                e.stopPropagation();
-                TaskManager.toggleComplete(task.id);
-                UIController.renderTasks(); // Updates dashboard
-                this.render(); // Updates planner
-            });
-
-
-
-            // Add Resize Handle
-            const resizeHandle = document.createElement('div');
-            resizeHandle.className = 'resize-handle';
-            el.appendChild(resizeHandle);
-
-            // Bind Resize Event
-            resizeHandle.addEventListener('mousedown', (e) => {
-                e.stopPropagation();
-                e.preventDefault(); // Prevent text selection
-                this.handleResizeStart(e, task, el);
-            });
-
-            this.elements.timeline.appendChild(el);
         });
     },
 
@@ -1530,14 +1576,18 @@ const PlannerController = {
 
         if (hours < this.startHour || hours >= this.endHour) return;
 
+        // Dynamic Height Calculation to prevent drift
+        const firstSlot = this.elements.timeline.querySelector('.time-slot');
+        const slotHeight = firstSlot ? firstSlot.offsetHeight : this.timeSlotHeight;
+
         const totalMinutes = (hours * 60) + minutes;
         const startMinutes = this.startHour * 60;
         const offsetMinutes = totalMinutes - startMinutes;
-        const top = (offsetMinutes / 60) * this.timeSlotHeight;
+        const top = (offsetMinutes / 60) * slotHeight;
 
         const line = document.createElement('div');
         line.className = 'current-time-line';
-        line.style.top = `${top + 16}px`;
+        line.style.top = `${top}px`;
         this.elements.timeline.appendChild(line);
 
         // Update active task highlighting
@@ -1586,24 +1636,6 @@ const PlannerController = {
         // Validate Time Range
         if (hours < this.startHour || hours >= this.endHour) {
             ToastManager.show(`Time ${timeString} is outside working hours (${this.startHour}:00 - ${this.endHour}:00)`, 'error');
-            return;
-        }
-
-        // Check for Conflicts
-        const duration = task.plannedDuration || 30;
-        const myStart = hours * 60 + minutes;
-        const myEnd = myStart + duration;
-
-        const scheduled = TaskManager.getTasks().filter(t => t.plannedStartTime && !t.completed && t.id !== taskId);
-        const overlaps = scheduled.some(s => {
-            const [sH, sM] = s.plannedStartTime.split(':').map(Number);
-            const sStart = sH * 60 + sM;
-            const sEnd = sStart + (s.plannedDuration || 30);
-            return (myStart < sEnd && myEnd > sStart);
-        });
-
-        if (overlaps) {
-            ToastManager.show(`Slot at ${timeString} is occupied`, 'error');
             return;
         }
 
