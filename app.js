@@ -335,6 +335,7 @@ const TaskManager = {
             priority: taskData.priority || 'medium',
             categoryId: taskData.categoryId || null,
             dueDate: taskData.dueDate || null,
+            preferredTime: taskData.preferredTime || null,
             plannedDuration: taskData.plannedDuration || 30,
             color: taskData.color || '#6366f1',
             subtasks: taskData.subtasks || [],
@@ -1106,16 +1107,42 @@ const PlannerController = {
             return;
         }
 
-        this.elements.unscheduledList.innerHTML = tasks.map(task => `
+        this.elements.unscheduledList.innerHTML = tasks.map(task => {
+            let preferredTimeHtml = '';
+            let scheduleBtnHtml = '';
+
+            if (task.preferredTime) {
+                preferredTimeHtml = `
+                    <div class="preferred-time-badge" style="display: flex; align-items: center; gap: 4px; font-size: 11px; color: var(--accent-primary); background: var(--bg-secondary); padding: 2px 6px; border-radius: 4px; margin-top: 4px;">
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                             <circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline>
+                        </svg>
+                        <span>${task.preferredTime}</span>
+                    </div>
+                `;
+                scheduleBtnHtml = `
+                    <button class="quick-schedule-btn" data-id="${task.id}" data-time="${task.preferredTime}" title="Schedule at ${task.preferredTime}" style="margin-left: auto; padding: 4px; border-radius: 50%; border: 1px solid var(--border-color); color: var(--accent-primary); background: transparent; cursor: pointer; display: flex; align-items: center; justify-content: center;">
+                         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                             <polyline points="20 6 9 17 4 12"></polyline>
+                        </svg>
+                    </button>
+                `;
+            }
+
+            return `
             <div class="planner-task-card" draggable="true" data-id="${task.id}">
                 <div class="planner-task-info">${Utils.escapeHtml(task.title)}</div>
-                <div class="planner-task-meta">
-                    <span class="priority-dot ${task.priority}"></span>
-                    <span>${task.priority}</span>
-                    <span class="task-duration-badge">${task.plannedDuration || 30}m</span>
+                <div class="planner-task-meta" style="flex-wrap: wrap; gap: 6px;">
+                    <div style="display: flex; align-items: center; gap: 6px;">
+                        <span class="priority-dot ${task.priority}"></span>
+                        <span>${task.priority}</span>
+                        <span class="task-duration-badge">${task.plannedDuration || 30}m</span>
+                    </div>
+                    ${preferredTimeHtml}
+                    ${scheduleBtnHtml}
                 </div>
             </div>
-        `).join('');
+        `}).join('');
 
         this.elements.unscheduledList.querySelectorAll('.planner-task-card').forEach(card => {
             card.addEventListener('dragstart', (e) => {
@@ -1129,6 +1156,16 @@ const PlannerController = {
             card.addEventListener('dragend', () => {
                 card.classList.remove('dragging');
                 this.draggedTask = null;
+            });
+        });
+
+        // Bind Quick Schedule Buttons
+        this.elements.unscheduledList.querySelectorAll('.quick-schedule-btn').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                e.stopPropagation(); // Prevent drag/click conflicts
+                const taskId = btn.dataset.id;
+                const time = btn.dataset.time;
+                this.quickScheduleTask(taskId, time);
             });
         });
     },
@@ -1310,14 +1347,22 @@ const PlannerController = {
             return;
         }
 
-        // 2. Sort by Priority (High > Medium > Low) and then Duration (Longer first)
+        // 2. Separate tasks with Preferred Time
+        const withPreference = unscheduled.filter(t => t.preferredTime);
+        const withoutPreference = unscheduled.filter(t => !t.preferredTime);
+
+        // Sort tasks without preference by Priority then Duration
         const priorityOrder = { 'high': 3, 'medium': 2, 'low': 1 };
-        unscheduled.sort((a, b) => {
+        const sortFn = (a, b) => {
             const pA = priorityOrder[a.priority] || 0;
             const pB = priorityOrder[b.priority] || 0;
             if (pA !== pB) return pB - pA; // Higher priority first
             return (b.plannedDuration || 30) - (a.plannedDuration || 30); // Longer tasks first
-        });
+        };
+        withoutPreference.sort(sortFn);
+
+        // Combine: Preferred first, then others
+        const sortedUnscheduled = [...withPreference, ...withoutPreference];
 
         // 3. Find Gaps in Schedule
         const scheduled = tasks.filter(t => t.plannedStartTime && !t.completed)
@@ -1333,44 +1378,67 @@ const PlannerController = {
         let workStartMins = 8 * 60;
         const workEndMins = 20 * 60; // Up to 8 PM
 
-        unscheduled.forEach(task => {
+        sortedUnscheduled.forEach(task => {
             const duration = task.plannedDuration || 30;
+            let scheduledTime = null;
 
-            // Try to find a slot
-            // Simple gap search
-            // Iterate through every 15m slot
-            for (let time = workStartMins; time <= workEndMins - duration; time += 15) {
-                // Check if this slot + duration overlaps with any existing scheduled task
+            // Strategy A: Try Preferred Time first
+            if (task.preferredTime) {
+                const [pH, pM] = task.preferredTime.split(':').map(Number);
+                const pStart = pH * 60 + pM;
+                const pEnd = pStart + duration;
+
+                // Check overlap at preferred time
                 const overlaps = scheduled.some(s => {
                     const [sH, sM] = s.plannedStartTime.split(':').map(Number);
                     const sStart = sH * 60 + sM;
                     const sEnd = sStart + (s.plannedDuration || 30);
-
-                    const myStart = time;
-                    const myEnd = time + duration;
-
-                    return (myStart < sEnd && myEnd > sStart);
+                    return (pStart < sEnd && pEnd > sStart);
                 });
 
-                if (!overlaps) {
-                    // Found a slot!
-                    const h = Math.floor(time / 60);
-                    const m = time % 60;
-                    const timeString = `${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}`;
+                if (!overlaps && pStart >= workStartMins && pEnd <= workEndMins) {
+                    scheduledTime = task.preferredTime;
+                }
+            }
 
-                    TaskManager.updateTask(task.id, { plannedStartTime: timeString });
+            // Strategy B: Find next available slot if preferred failed or didn't exist
+            if (!scheduledTime) {
+                // Simple gap search
+                // Iterate through every 15m slot
+                for (let time = workStartMins; time <= workEndMins - duration; time += 15) {
+                    // Check if this slot + duration overlaps with any existing scheduled task
+                    const overlaps = scheduled.some(s => {
+                        const [sH, sM] = s.plannedStartTime.split(':').map(Number);
+                        const sStart = sH * 60 + sM;
+                        const sEnd = sStart + (s.plannedDuration || 30);
 
-                    // Add to our local 'scheduled' logic so next iteration respects it
-                    scheduled.push({ ...task, plannedStartTime: timeString });
-                    scheduled.sort((a, b) => { // Keep sorted
-                        const timeA = parseInt(a.plannedStartTime.replace(':', ''));
-                        const timeB = parseInt(b.plannedStartTime.replace(':', ''));
-                        return timeA - timeB;
+                        const myStart = time;
+                        const myEnd = time + duration;
+
+                        return (myStart < sEnd && myEnd > sStart);
                     });
 
-                    scheduledCount++;
-                    break; // Stop looking for this task
+                    if (!overlaps) {
+                        const h = Math.floor(time / 60);
+                        const m = time % 60;
+                        scheduledTime = `${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}`;
+                        break;
+                    }
                 }
+            }
+
+            if (scheduledTime) {
+                TaskManager.updateTask(task.id, { plannedStartTime: scheduledTime });
+
+                // Add to our local 'scheduled' logic so next iteration respects it
+                scheduled.push({ ...task, plannedStartTime: scheduledTime });
+                scheduled.sort((a, b) => { // Keep sorted
+                    const timeA = parseInt(a.plannedStartTime.replace(':', ''));
+                    const timeB = parseInt(b.plannedStartTime.replace(':', ''));
+                    return timeA - timeB;
+                });
+
+                scheduledCount++;
             }
         });
 
@@ -1437,6 +1505,42 @@ const PlannerController = {
         TaskManager.updateTask(this.draggedTask.id, updates);
         this.render();
         ToastManager.show(`Scheduled for ${this.formatTime(hour, minute)}`);
+    },
+
+    quickScheduleTask(taskId, timeString) {
+        const task = TaskManager.getTasks().find(t => t.id === taskId);
+        if (!task) return;
+
+        const [hours, minutes] = timeString.split(':').map(Number);
+
+        // Validate Time Range
+        if (hours < this.startHour || hours >= this.endHour) {
+            ToastManager.show(`Time ${timeString} is outside working hours (${this.startHour}:00 - ${this.endHour}:00)`, 'error');
+            return;
+        }
+
+        // Check for Conflicts
+        const duration = task.plannedDuration || 30;
+        const myStart = hours * 60 + minutes;
+        const myEnd = myStart + duration;
+
+        const scheduled = TaskManager.getTasks().filter(t => t.plannedStartTime && !t.completed && t.id !== taskId);
+        const overlaps = scheduled.some(s => {
+            const [sH, sM] = s.plannedStartTime.split(':').map(Number);
+            const sStart = sH * 60 + sM;
+            const sEnd = sStart + (s.plannedDuration || 30);
+            return (myStart < sEnd && myEnd > sStart);
+        });
+
+        if (overlaps) {
+            ToastManager.show(`Slot at ${timeString} is occupied`, 'error');
+            return;
+        }
+
+        // Schedule
+        TaskManager.updateTask(taskId, { plannedStartTime: timeString });
+        this.render();
+        ToastManager.show(`Scheduled "${task.title}" for ${timeString}`);
     },
 
     formatTime(hour, minute = 0) {
@@ -1609,6 +1713,7 @@ const UIController = {
         this.elements.taskDue = document.getElementById('task-due');
         this.elements.taskDurationHours = document.getElementById('task-duration-hours');
         this.elements.taskDurationMinutes = document.getElementById('task-duration-minutes');
+        this.elements.taskPreferredTime = document.getElementById('task-preferred-time'); // New
         this.elements.taskColor = document.getElementById('task-color'); // New
         this.elements.taskColorPicker = document.getElementById('task-color-picker'); // New
         this.elements.closeModal = document.getElementById('close-modal');
@@ -2126,7 +2231,7 @@ const UIController = {
             this.elements.taskPriority.value = task.priority;
             this.elements.taskCategory.value = task.categoryId || '';
             this.elements.taskDue.value = task.dueDate || '';
-            this.elements.taskDue.value = task.dueDate || '';
+            this.elements.taskPreferredTime.value = task.preferredTime || ''; // Set preferred time
             const existingDuration = task.plannedDuration || 30;
             this.elements.taskDurationHours.value = Math.floor(existingDuration / 60);
             this.elements.taskDurationMinutes.value = existingDuration % 60;
@@ -2136,6 +2241,7 @@ const UIController = {
             this.elements.taskId.value = '';
             this.elements.taskForm.reset();
             this.elements.taskDue.value = '';
+            this.elements.taskPreferredTime.value = ''; // Reset preferred time
 
             // Reset color to default
             this.elements.taskColor.value = '#6366f1';
@@ -2210,24 +2316,27 @@ const UIController = {
             return;
         }
 
+        const validPriorities = ['low', 'medium', 'high'];
+        const priority = validPriorities.includes(this.elements.taskPriority.value) ? this.elements.taskPriority.value : 'medium';
+        const dueDate = this.elements.taskDue.value;
+        const preferredTime = this.elements.taskPreferredTime.value; // Get preferred time
+
+        const hours = parseInt(this.elements.taskDurationHours.value) || 0;
+        const minutes = parseInt(this.elements.taskDurationMinutes.value) || 0;
+        let duration = (hours * 60) + minutes;
+        if (duration < 15) duration = 15; // Minimum 15 mins
+
         // Filter out empty subtasks
         const subtasks = this.editingSubtasks.filter(st => st.text.trim());
-
-        const hrs = parseInt(this.elements.taskDurationHours.value) || 0;
-        const mins = parseInt(this.elements.taskDurationMinutes.value) || 0;
-
-        // Convert to total minutes for storage
-        // If user enters 0 hrs 0 mins, default to 30 mins
-        const totalMinutes = (hrs * 60) + mins;
-        const finalDuration = totalMinutes > 0 ? totalMinutes : 30;
 
         const taskData = {
             title: title,
             description: this.elements.taskDescription.value,
-            priority: this.elements.taskPriority.value,
+            priority: priority,
             categoryId: this.elements.taskCategory.value || null,
-            dueDate: this.elements.taskDue.value || null,
-            plannedDuration: finalDuration, // Use the calculated minutes
+            dueDate: dueDate || null,
+            preferredTime: preferredTime || null, // Save preferred time
+            plannedDuration: duration, // Save duration
             color: this.elements.taskColor.value, // Save color
             subtasks: subtasks
         };

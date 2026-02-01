@@ -685,11 +685,8 @@
                     <label for="task-title">Task Title</label>
                     <input type="text" id="task-title" placeholder="What needs to be done?" required>
                 </div>
-                <div class="form-group">
-                    <label for="task-description">Description (optional)</label>
-                    <textarea id="task-description" placeholder="Add more details..." rows="3"></textarea>
-                </div>
-                <div class="form-row form-row-3">
+
+                <div class="form-row">
                     <div class="form-group">
                         <label for="task-priority">Priority</label>
                         <select id="task-priority" required>
@@ -704,13 +701,36 @@
                             <option value="">No category</option>
                         </select>
                     </div>
+                </div>
+
+                <div class="form-row">
                     <div class="form-group">
                         <label for="task-due">Due Date</label>
                         <input type="date" id="task-due">
                     </div>
                     <div class="form-group">
+                        <label for="task-preferred-time">Preferred Time</label>
+                        <input type="time" id="task-preferred-time">
+                    </div>
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Duration</label>
+                        <div style="display: flex; gap: 8px;">
+                            <div style="flex: 1;">
+                                <input type="number" id="task-duration-hours" placeholder="Hrs" min="0" max="23">
+                            </div>
+                            <div style="flex: 1;">
+                                <input type="number" id="task-duration-minutes" placeholder="Min" min="0" max="59"
+                                    step="5">
+                            </div>
+                        </div>
+                    </div>
+                    <div class="form-group">
                         <label>Color</label>
                         <div class="color-picker" id="task-color-picker">
+                            <!-- Helper logic will fill this, keeping HTML clean -->
                             <button type="button" class="color-option active" data-color="#6366f1"
                                 style="background-color: #6366f1;"></button>
                             <button type="button" class="color-option" data-color="#3b82f6"
@@ -730,18 +750,12 @@
                         </div>
                         <input type="hidden" id="task-color" value="#6366f1">
                     </div>
-                    <div class="form-group">
-                        <label>Duration</label>
-                        <div style="display: flex; gap: 8px;">
-                            <div style="flex: 1;">
-                                <input type="number" id="task-duration-hours" placeholder="Hrs" min="0" max="23">
-                            </div>
-                            <div style="flex: 1;">
-                                <input type="number" id="task-duration-minutes" placeholder="Min" min="0" max="59"
-                                    step="5">
-                            </div>
-                        </div>
-                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label for="task-description">Description (optional)</label>
+                    <textarea id="task-description" placeholder="Add details..." rows="1"
+                        style="resize: vertical; min-height: 2.4em;"></textarea>
                 </div>
 
                 <!-- Subtasks -->
