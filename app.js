@@ -1279,8 +1279,15 @@ const PlannerController = {
 
                 el.style.top = `${top}px`;
                 el.style.height = `${height}px`;
-                el.style.width = `calc(${width}% - 12px)`; // Subtract gap
-                el.style.left = `calc(${index * width}% + 56px)`; // +56px for time labels width
+
+                // Dynamic Width Calculation
+                // Available width = 100% - 56px (Time label width)
+                // Task width = Available width / Group Size
+                el.style.width = `calc(((100% - 56px) / ${group.length}) - 8px)`; // -8px for gap
+
+                // Left Position
+                // 56px + (Index * Task Width)
+                el.style.left = `calc(56px + (${index} * ((100% - 56px) / ${group.length})))`;
 
                 // Color Coding Support
 
