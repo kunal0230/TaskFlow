@@ -4,6 +4,47 @@
    ============================================ */
 
 // ============================================
+// Announcement Manager - One-time popup notice
+// ============================================
+const AnnouncementManager = {
+    STORAGE_KEY: 'taskflow_announcement_v1_dismissed',
+    _shownThisSession: false,
+
+    maybeShow() {
+        // If dismissed permanently, skip
+        if (localStorage.getItem(this.STORAGE_KEY) === 'true') return;
+        // Only show once per session (page load), even if user re-navigates
+        if (this._shownThisSession) return;
+        this._shownThisSession = true;
+
+        const overlay = document.getElementById('announcement-modal');
+        if (!overlay) return;
+
+        // Small delay so the dashboard renders first
+        setTimeout(() => {
+            overlay.classList.add('active');
+        }, 600);
+
+        const dismissBtn = document.getElementById('announcement-dismiss');
+        const noShowCheck = document.getElementById('announcement-no-show');
+
+        dismissBtn?.addEventListener('click', () => {
+            if (noShowCheck?.checked) {
+                localStorage.setItem(this.STORAGE_KEY, 'true');
+            }
+            overlay.classList.remove('active');
+        });
+
+        // Allow clicking the backdrop to close (without suppressing future shows)
+        overlay.addEventListener('click', (e) => {
+            if (e.target === overlay) {
+                overlay.classList.remove('active');
+            }
+        });
+    }
+};
+
+// ============================================
 // Utility Functions
 // ============================================
 const Utils = {
@@ -2100,6 +2141,7 @@ const UIController = {
         this.renderTasks();
         this.updateStats();
         CalendarController.init();
+        AnnouncementManager.maybeShow();
     },
 
     showPlanner() {
